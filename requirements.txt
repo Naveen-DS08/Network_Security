@@ -1,3 +1,7 @@
 python-dotenv
 pandas 
 numpy 
+pymongo
+certifi
+
+#-e .    # setup.py file gets triggred.
