@@ -3,6 +3,7 @@ ipykernel
 pandas 
 numpy 
 pymongo
+pymongo[srv]==3.11
 certifi
 
 #-e .    # setup.py file gets triggred.
