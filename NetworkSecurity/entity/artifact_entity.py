@@ -14,3 +14,10 @@ class DataValidationArtifacts:
     invalid_train_file_path: Path 
     invalid_test_file_path: Path
     drift_report_file_path: Path 
+
+@dataclass 
+class DataTransformationArtifacts:
+    transformed_object_file_path: Path 
+    transformed_train_file_path: Path 
+    transformed_test_file_path: Path 
+    

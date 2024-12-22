@@ -6,7 +6,7 @@ pymongo
 pymongo[srv]==3.11
 certifi
 scikit-learn
-dill
+# dill
 pyaml
 
 #-e .    # setup.py file gets triggred.
