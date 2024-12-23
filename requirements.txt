@@ -8,5 +8,6 @@ certifi
 scikit-learn
 # dill
 pyaml
+mlflow
 
 #-e .    # setup.py file gets triggred.
