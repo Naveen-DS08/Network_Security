@@ -17,6 +17,60 @@ jobs:
 
             - name: Lint Code
               run: echo "Linting repository"
-              
+
             - name: Run Unit Tests
               run: echo "Running unit tests" 
+
+    buid-and-push-ECR-image:
+        name: Continuous Delivery
+        needs: integration
+        runs-on: ubuntu-latest
+        steps: 
+            - name: Checkout Code
+              uses: actions/checkout@v3
+
+            - name: Install Utilities
+              run: |
+                sudu apt-get update
+                sudu apt-get install -y jq unzip
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v1
+              with: 
+                aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+                aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+                aws-region: ${{secrets.AWS_REGION}}
+
+            - name: Login to Amazon ECR 
+              id: login-ecr
+              used: aws-actions/amazon-ecr-login@v1
+
+            - name: Build, Tag and Push image to Amazon ECR 
+              id: build-image 
+              env:  
+                ECR_REGISTRY: ${{steps.login-ecr.outputs.registry}}
+                ECR_REPOSITORY: ${{secrets.ECR_REPOSITORY_NAME}}
+                IMAGE_TAG: latest
+              run:
+                # Build the docker cointainer and push it to ECR so that it can be deployed to ECS
+                docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+                docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+                echo "::ste-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    Continuous Deployment:
+        needs: build-and-push-ECR-image
+        runs-on: self-hosted
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v1
+              with:
+                aws-access-key-id: ${{secrets.AWS_ACCESS_KEY_ID}}
+                aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+                aws-region: ${{secrets.AWS_REGION}}
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              used: aws-actions/amazon-ecr-login@v1
+

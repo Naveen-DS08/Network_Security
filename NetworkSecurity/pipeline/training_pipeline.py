@@ -16,9 +16,12 @@ from NetworkSecurity.entity.config_entity import (TrainingPipelineConfig,
 from NetworkSecurity.entity.artifact_entity import (DataIngestionArtifact, DataValidationArtifacts,
                                                      DataTransformationArtifacts, ModelTrainerArtifacts)
 
+from NetworkSecurity.cloud.s3_syncer import S3Sync
+
 class TrainingPipeline:
     def __init__(self):
         self.training_pipeline_config = TrainingPipelineConfig()
+        self.s3sync = S3Sync()
 
     def start_data_ingestion(self):
         try:
@@ -64,12 +67,33 @@ class TrainingPipeline:
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
+    # Local artifacts is pushing to AWS s3
+    def sync_artifacts_dir_to_s3(self):
+        try:
+            aws_bucket_url = f"s3://{self.training_pipeline_config.training_bucket_name}/artifacts/{self.training_pipeline_config.timestamp}"
+            self.s3sync.sync_folder_to_s3(folder = self.training_pipeline_config.artifact_dir, aws_bucket_url=aws_bucket_url)
+        except Exception as e:
+            raise NetworkSecurityException(e, sys)
+        
+    # Local saved model is pushing to AWS s3
+    def sync_saved_model_dir_to_s3(self):
+        try:
+            aws_bucket_url = f"s3://{self.training_pipeline_config.training_bucket_name}/final_model/{self.training_pipeline_config.timestamp}"
+            self.s3sync.sync_folder_to_s3(folder = self.training_pipeline_config.model_dir, aws_bucket_url=aws_bucket_url)
+        except Exception as e:
+            raise NetworkSecurityException(e, sys)
+
     def run_pipeline(self):
         try:
             data_ingestion_artifacts = self.start_data_ingestion()
             data_validation_artifacts = self.start_data_validation(data_ingestion_atifacts=data_ingestion_artifacts)
             data_transformation_artifacts = self.start_data_transformation(data_validation_artifacts=data_validation_artifacts)
             model_trainer_artifacts = self.start_model_training(data_transformation_artifacts=data_ingestion_artifacts)
+
+            # pushing our model to s3 bucket
+            self.sync_artifacts_dir_to_s3()
+            self.sync_saved_model_dir_to_s3()
+            
             return model_trainer_artifacts
             
         except Exception as e:
