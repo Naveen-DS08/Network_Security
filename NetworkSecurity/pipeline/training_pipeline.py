@@ -42,6 +42,7 @@ class TrainingPipeline:
                                              data_validation_config=self.data_validation_config)
             data_validation_artifacts = data_validation.initiate_data_validation()
             logging.info(f"Data Validation Completed...\nData Validation Artifacts:\n{data_validation_artifacts}")
+            return data_validation_artifacts
         except Exception as e:
             raise NetworkSecurityException(e, sys)
         
@@ -53,33 +54,39 @@ class TrainingPipeline:
                                                         data_transformation_config= self.data_transformation_config)
             data_transformation_artifacts = data_transformation.initiate_data_transformation()
             logging.info(f"Data Transformation Completed...\nData Transformation Artifacts:\n{data_transformation_artifacts}")
+            return data_transformation_artifacts
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
     def start_model_training(self, data_transformation_artifacts:DataTransformationArtifacts):
         try: 
             self.model_trainer_config = ModelTrainerConfig(training_pipeline_config=self.training_pipeline_config)
-            logging.info("Initationg Model Training")
+            logging.info("Initializing Model Training")
             model_trainer = ModelTrainer(model_trainer_config=self.model_trainer_config, 
                                         data_transformation_artifacts=data_transformation_artifacts)
             model_trainer_artifacts = model_trainer.initiate_model_trainer()
             logging.info(f"Model Training Completed...\nModel Trainer Artifacts:\n{model_trainer_artifacts}")
+            return model_trainer_artifacts
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
     # Local artifacts is pushing to AWS s3
     def sync_artifacts_dir_to_s3(self):
         try:
+            logging.info("Initialize artifacts pusher AWS S3 bucket")
             aws_bucket_url = f"s3://{self.training_pipeline_config.training_bucket_name}/artifacts/{self.training_pipeline_config.timestamp}"
             self.s3sync.sync_folder_to_s3(folder = self.training_pipeline_config.artifact_dir, aws_bucket_url=aws_bucket_url)
+            logging.info(f"Model artifacts is pushed to {self.training_pipeline_config.training_bucket_name} bucket sucessfully")
         except Exception as e:
             raise NetworkSecurityException(e, sys)
         
     # Local saved model is pushing to AWS s3
     def sync_saved_model_dir_to_s3(self):
         try:
+            logging.info("Initialize trained model pusher AWS S3 bucket")
             aws_bucket_url = f"s3://{self.training_pipeline_config.training_bucket_name}/final_model/{self.training_pipeline_config.timestamp}"
             self.s3sync.sync_folder_to_s3(folder = self.training_pipeline_config.model_dir, aws_bucket_url=aws_bucket_url)
+            logging.info(f"Trained model is pushed to {self.training_pipeline_config.training_bucket_name} bucket sucessfully")
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
@@ -88,7 +95,7 @@ class TrainingPipeline:
             data_ingestion_artifacts = self.start_data_ingestion()
             data_validation_artifacts = self.start_data_validation(data_ingestion_atifacts=data_ingestion_artifacts)
             data_transformation_artifacts = self.start_data_transformation(data_validation_artifacts=data_validation_artifacts)
-            model_trainer_artifacts = self.start_model_training(data_transformation_artifacts=data_ingestion_artifacts)
+            model_trainer_artifacts = self.start_model_training(data_transformation_artifacts=data_transformation_artifacts)
 
             # pushing our model to s3 bucket
             self.sync_artifacts_dir_to_s3()
